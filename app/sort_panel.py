@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QPixmap, QShortcut, QKeySequence
+from PyQt6.QtGui import QPixmap, QShortcut, QKeySequence, QColor, QPainter
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QFrame, QMessageBox, QLineEdit
@@ -20,6 +20,22 @@ from app.apply_dialog import ApplyDialog
 from core.scanner import FolderScanner
 from core.thumbnail import ThumbnailManager
 from core.session import SessionManager
+
+
+class StatusLine(QWidget):
+    """A thin colored bar that paints directly, bypassing Qt stylesheet inheritance."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(6)
+        self._color = QColor(COLORS['Border'])
+
+    def set_color(self, color_str: str):
+        self._color = QColor(color_str)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), self._color)
 
 
 class SortPanel(QWidget):
@@ -125,9 +141,7 @@ class SortPanel(QWidget):
         preview_layout.addWidget(self.lbl_preview, stretch=1)
         
         # Colored line to indicate assignment status
-        self.status_line = QFrame()
-        self.status_line.setFixedHeight(6)
-        self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Border']}; }}")
+        self.status_line = StatusLine()
         preview_layout.addWidget(self.status_line)
         
         top_layout.addWidget(self.preview_container, stretch=1)
@@ -521,15 +535,12 @@ class SortPanel(QWidget):
         path_str = str(self.paths[abs_idx])
         assigned_sf = self.assignments.get(path_str)
         if assigned_sf == "skip":
-            self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['TextMuted']}; border-radius: 3px; }}")
+            self.status_line.set_color(COLORS['TextMuted'])
         elif assigned_sf:
             color = self.get_color_for_subfolder(assigned_sf)
-            if color:
-                self.status_line.setStyleSheet(f"QFrame {{ background-color: {color}; border-radius: 3px; }}")
-            else:
-                self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Surface2']}; border-radius: 3px; }}")
+            self.status_line.set_color(color if color else COLORS['Surface2'])
         else:
-            self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Border']}; border-radius: 3px; }}")
+            self.status_line.set_color(COLORS['Border'])
 
     # --- Status Updates ---
 

@@ -76,18 +76,19 @@ class ThumbnailCell(QWidget):
             painter.setPen(pen)
             painter.drawRect(1, 1, self.width() - 2, self.height() - 2)
             
-        # Draw assignment badge
-        if self.assignment:
-            if self.assignment == 'skip':
-                painter.fillRect(0, 0, self.width(), self.height(), QColor(0, 0, 0, 150))
-                painter.setPen(QPen(QColor(COLORS['TextMuted'])))
-                painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "SKIPPED")
-            else:
-                if self.assignment_color:
-                    badge_size = 16
-                    painter.setBrush(QColor(self.assignment_color))
-                    painter.setPen(Qt.PenStyle.NoPen)
-                    painter.drawEllipse(self.width() - badge_size - 4, 4, badge_size, badge_size)
+        # Draw colored bottom line based on assignment
+        bar_height = 4
+        if self.assignment == 'skip':
+            painter.fillRect(0, self.height() - bar_height, self.width(), bar_height, QColor(COLORS['TextMuted']))
+        elif self.assignment and self.assignment_color:
+            painter.fillRect(0, self.height() - bar_height, self.width(), bar_height, QColor(self.assignment_color))
+            
+        # Draw assignment badge (dot in top-right corner)
+        if self.assignment and self.assignment != 'skip' and self.assignment_color:
+            badge_size = 10
+            painter.setBrush(QColor(self.assignment_color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(self.width() - badge_size - 4, 4, badge_size, badge_size)
 
 
 class FilmstripWidget(QScrollArea):
