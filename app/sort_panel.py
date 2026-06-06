@@ -127,7 +127,7 @@ class SortPanel(QWidget):
         # Colored line to indicate assignment status
         self.status_line = QFrame()
         self.status_line.setFixedHeight(6)
-        self.status_line.setStyleSheet("background-color: transparent;")
+        self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Border']}; }}")
         preview_layout.addWidget(self.status_line)
         
         top_layout.addWidget(self.preview_container, stretch=1)
@@ -521,15 +521,15 @@ class SortPanel(QWidget):
         path_str = str(self.paths[abs_idx])
         assigned_sf = self.assignments.get(path_str)
         if assigned_sf == "skip":
-            self.status_line.setStyleSheet(f"background-color: {COLORS['TextMuted']}; border-radius: 3px;")
+            self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['TextMuted']}; border-radius: 3px; }}")
         elif assigned_sf:
             color = self.get_color_for_subfolder(assigned_sf)
             if color:
-                self.status_line.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+                self.status_line.setStyleSheet(f"QFrame {{ background-color: {color}; border-radius: 3px; }}")
             else:
-                self.status_line.setStyleSheet(f"background-color: {COLORS['Surface2']}; border-radius: 3px;")
+                self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Surface2']}; border-radius: 3px; }}")
         else:
-            self.status_line.setStyleSheet(f"background-color: {COLORS['Surface2']}; border-radius: 3px;")
+            self.status_line.setStyleSheet(f"QFrame {{ background-color: {COLORS['Border']}; border-radius: 3px; }}")
 
     # --- Status Updates ---
 
