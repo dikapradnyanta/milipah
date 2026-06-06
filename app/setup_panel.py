@@ -42,9 +42,9 @@ class SetupPanel(QWidget):
 
         # 1. Source Folder Selection
         folder_layout = QHBoxLayout()
-        self.btn_pick_folder = QPushButton("Pilih Folder Sumber...")
+        self.btn_pick_folder = QPushButton("Select Source Folder...")
         self.btn_pick_folder.clicked.connect(self.pick_folder)
-        self.lbl_folder_path = QLabel("Belum ada folder terpilih")
+        self.lbl_folder_path = QLabel("No folder selected")
         self.lbl_folder_path.setStyleSheet("color: #888780;")
         
         folder_layout.addWidget(self.btn_pick_folder)
@@ -52,7 +52,7 @@ class SetupPanel(QWidget):
         layout.addLayout(folder_layout)
 
         # Recursive toggle
-        self.chk_recursive = QCheckBox("Scan subfolder juga (Rekursif)")
+        self.chk_recursive = QCheckBox("Scan subfolders too (Recursive)")
         layout.addWidget(self.chk_recursive)
 
         # Separator
@@ -62,16 +62,16 @@ class SetupPanel(QWidget):
         layout.addWidget(sep)
 
         # 2. Subfolders
-        sub_title = QLabel("Subfolder Tujuan")
+        sub_title = QLabel("Target Subfolders")
         sub_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(sub_title)
 
         add_sub_layout = QHBoxLayout()
         self.input_subfolder = QLineEdit()
-        self.input_subfolder.setPlaceholderText("Nama subfolder baru...")
+        self.input_subfolder.setPlaceholderText("New subfolder name...")
         self.input_subfolder.returnPressed.connect(self.add_subfolder)
         
-        self.btn_add_subfolder = QPushButton("Tambah")
+        self.btn_add_subfolder = QPushButton("Add")
         self.btn_add_subfolder.clicked.connect(self.add_subfolder)
         
         add_sub_layout.addWidget(self.input_subfolder)
@@ -82,7 +82,7 @@ class SetupPanel(QWidget):
         self.list_subfolders.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(self.list_subfolders)
         
-        self.btn_remove_subfolder = QPushButton("Hapus Subfolder Terpilih")
+        self.btn_remove_subfolder = QPushButton("Remove Selected Subfolder")
         self.btn_remove_subfolder.clicked.connect(self.remove_subfolder)
         self.btn_remove_subfolder.setEnabled(False)
         self.list_subfolders.itemSelectionChanged.connect(
@@ -93,7 +93,7 @@ class SetupPanel(QWidget):
         layout.addStretch()
 
         # 3. Start CTA
-        self.btn_start = QPushButton("Mulai Sortir")
+        self.btn_start = QPushButton("Start Sorting")
         self.btn_start.setObjectName("ctaButton")
         self.btn_start.setFixedHeight(50)
         self.btn_start.setEnabled(False)
@@ -101,7 +101,7 @@ class SetupPanel(QWidget):
         layout.addWidget(self.btn_start)
 
     def pick_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Pilih Folder Sumber")
+        folder = QFileDialog.getExistingDirectory(self, "Select Source Folder")
         if folder:
             self.source_folder = Path(folder)
             self.lbl_folder_path.setText(str(self.source_folder))
@@ -188,7 +188,7 @@ class SetupPanel(QWidget):
 
     def reset(self):
         self.source_folder = None
-        self.lbl_folder_path.setText("Belum ada folder terpilih")
+        self.lbl_folder_path.setText("No folder selected")
         self.subfolders.clear()
         self.update_subfolder_list()
         self.check_ready()

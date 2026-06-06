@@ -7,12 +7,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QByteArray
 from PyQt6.QtGui import QPixmap, QShortcut, QKeySequence, QColor, QPainter
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QFrame, QMessageBox, QLineEdit
 )
+from PyQt6.QtSvg import QSvgRenderer
 
 from app.settings import COLORS, THUMB_SLIDING_WINDOW
 from app.filmstrip import FilmstripWidget
@@ -36,6 +37,51 @@ class StatusLine(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), self._color)
+
+
+class AssignmentLabel(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.icon_label = QLabel()
+        self.text_label = QLabel()
+        
+        layout.addStretch()
+        layout.addWidget(self.icon_label)
+        layout.addWidget(self.text_label)
+        layout.addStretch()
+        
+        self.setFixedHeight(24)
+
+    def set_assignment(self, text: str, color: str, icon_type: str):
+        if not text:
+            self.icon_label.clear()
+            self.text_label.clear()
+            return
+            
+        self.text_label.setText(text)
+        self.text_label.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {color}; border: none;")
+        
+        if icon_type == "folder":
+            svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="{color}"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'''
+        elif icon_type == "skip":
+            svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="{color}"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>'''
+        else:
+            self.icon_label.clear()
+            return
+            
+        renderer = QSvgRenderer(QByteArray(svg.encode('utf-8')))
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(QColor("transparent"))
+        painter = QPainter(pixmap)
+        renderer.render(painter)
+        painter.end()
+        
+        self.icon_label.setPixmap(pixmap)
 
 
 class SortPanel(QWidget):
@@ -98,11 +144,14 @@ class SortPanel(QWidget):
         # Add new subfolder UI
         self.add_sub_layout = QHBoxLayout()
         self.input_subfolder = QLineEdit()
-        self.input_subfolder.setPlaceholderText("Subfolder baru...")
+        self.input_subfolder.setPlaceholderText("New subfolder...")
         self.input_subfolder.setStyleSheet(f"background-color: {COLORS['Background']}; color: {COLORS['TextPrimary']}; padding: 5px;")
+        self.input_subfolder.setEnabled(False)
         self.btn_add_subfolder = QPushButton("+")
         self.btn_add_subfolder.setFixedWidth(30)
-        self.btn_add_subfolder.clicked.connect(self.add_subfolder)
+        self.btn_add_subfolder.setStyleSheet("padding: 0px;")
+        self.btn_add_subfolder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_add_subfolder.clicked.connect(self.on_add_btn_clicked)
         self.input_subfolder.returnPressed.connect(self.add_subfolder)
         
         self.add_sub_layout.addWidget(self.input_subfolder)
@@ -115,10 +164,12 @@ class SortPanel(QWidget):
         left_layout.addWidget(spacer)
         
         self.btn_skip = QPushButton("Skip (S)")
+        self.btn_skip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_skip.clicked.connect(self.action_skip)
         left_layout.addWidget(self.btn_skip)
         
         self.btn_undo = QPushButton("Undo (Z)")
+        self.btn_undo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_undo.clicked.connect(self.action_undo)
         left_layout.addWidget(self.btn_undo)
         
@@ -130,7 +181,7 @@ class SortPanel(QWidget):
         preview_layout = QVBoxLayout(self.preview_container)
         
         # Loading indicator for scanner
-        self.lbl_loading = QLabel("Mencari foto...")
+        self.lbl_loading = QLabel("Scanning photos...")
         self.lbl_loading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_loading.setStyleSheet("font-size: 18px;")
         preview_layout.addWidget(self.lbl_loading)
@@ -139,6 +190,10 @@ class SortPanel(QWidget):
         self.lbl_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_preview.hide()
         preview_layout.addWidget(self.lbl_preview, stretch=1)
+        
+        # Assignment name label above the colored line
+        self.lbl_assignment = AssignmentLabel()
+        preview_layout.addWidget(self.lbl_assignment)
         
         # Colored line to indicate assignment status
         self.status_line = StatusLine()
@@ -153,8 +208,9 @@ class SortPanel(QWidget):
         right_layout = QVBoxLayout(self.right_sidebar)
         right_layout.setContentsMargins(15, 20, 15, 20)
         
-        self.btn_apply = QPushButton("Apply & Lanjut")
+        self.btn_apply = QPushButton("Move")
         self.btn_apply.setFixedHeight(50)
+        self.btn_apply.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_apply.setStyleSheet(f"""
             QPushButton {{
                 background-color: {COLORS['AccentGreen']};
@@ -200,9 +256,12 @@ class SortPanel(QWidget):
         filter_layout = QHBoxLayout()
         filter_layout.setContentsMargins(15, 5, 15, 5)
         lbl_filter = QLabel("Filter:")
-        self.btn_filter_all = QPushButton("Semua")
-        self.btn_filter_unassigned = QPushButton("Belum Assign")
+        self.btn_filter_all = QPushButton("All")
+        self.btn_filter_unassigned = QPushButton("Unassigned")
         
+        self.btn_filter_all.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_filter_unassigned.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         self.btn_filter_all.clicked.connect(lambda: self.set_filter("all"))
         self.btn_filter_unassigned.clicked.connect(lambda: self.set_filter("unassigned"))
         
@@ -215,6 +274,7 @@ class SortPanel(QWidget):
         
         # Filmstrip
         self.filmstrip = FilmstripWidget()
+        self.filmstrip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.filmstrip.cell_clicked.connect(self.go_to_absolute_index)
         bottom_layout.addWidget(self.filmstrip)
         
@@ -226,7 +286,7 @@ class SortPanel(QWidget):
         status_layout.setContentsMargins(15, 0, 15, 0)
         
         self.lbl_status_pos = QLabel("0 / 0")
-        self.lbl_status_counts = QLabel("Assigned: 0 | Belum: 0 | Skip: 0")
+        self.lbl_status_counts = QLabel("Assigned: 0 | Unassigned: 0 | Skip: 0")
         
         status_layout.addWidget(self.lbl_status_pos)
         status_layout.addStretch()
@@ -282,13 +342,27 @@ class SortPanel(QWidget):
                 }}
             """)
             btn.setFixedHeight(40)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             # Use default argument binding to capture sf_name correctly
             btn.clicked.connect(lambda checked, name=sf['name']: self.action_assign(name))
             self.buttons_layout.addWidget(btn)
             
+    def on_add_btn_clicked(self):
+        if not self.input_subfolder.isEnabled():
+            self.input_subfolder.setEnabled(True)
+            self.input_subfolder.setFocus()
+            self.btn_add_subfolder.setText("✓")
+        else:
+            self.add_subfolder()
+
     def add_subfolder(self):
         name = self.input_subfolder.text().strip()
-        if not name: return
+        if not name: 
+            self.input_subfolder.setEnabled(False)
+            self.btn_add_subfolder.setText("+")
+            self.setFocus()
+            return
+            
         if any(sf["name"].lower() == name.lower() for sf in self.subfolders): return
         if len(self.subfolders) >= 9: return
         
@@ -304,6 +378,9 @@ class SortPanel(QWidget):
         })
         self.setup_sidebar_buttons()
         self.input_subfolder.clear()
+        self.input_subfolder.setEnabled(False)
+        self.btn_add_subfolder.setText("+")
+        self.setFocus()
 
     def on_scan_complete(self, paths: list[Path]):
         self.paths = paths
@@ -350,7 +427,7 @@ class SortPanel(QWidget):
             self.go_to_filtered_index(0)
         else:
             self.lbl_preview.clear()
-            self.lbl_preview.setText("Tidak ada foto di filter ini.")
+            self.lbl_preview.setText("No photos in this filter.")
             self.lbl_status_pos.setText("0 / 0")
 
     def go_to_absolute_index(self, abs_idx: int):
@@ -536,11 +613,14 @@ class SortPanel(QWidget):
         assigned_sf = self.assignments.get(path_str)
         if assigned_sf == "skip":
             self.status_line.set_color(COLORS['TextMuted'])
+            self.lbl_assignment.set_assignment("Skip", COLORS['TextMuted'], "skip")
         elif assigned_sf:
             color = self.get_color_for_subfolder(assigned_sf)
             self.status_line.set_color(color if color else COLORS['Surface2'])
+            self.lbl_assignment.set_assignment(assigned_sf, color if color else COLORS['TextPrimary'], "folder")
         else:
             self.status_line.set_color(COLORS['Border'])
+            self.lbl_assignment.set_assignment("", "", "")
 
     # --- Status Updates ---
 
@@ -552,7 +632,7 @@ class SortPanel(QWidget):
         try:
             curr_filt = self.filtered_indices.index(self.current_idx) + 1
             total = len(self.filtered_indices)
-            self.lbl_status_pos.setText(f"{curr_filt} / {total} (Total file: {len(self.paths)})")
+            self.lbl_status_pos.setText(f"{curr_filt} / {total} (Total files: {len(self.paths)})")
         except ValueError:
             self.lbl_status_pos.setText("? / ?")
 
@@ -561,7 +641,7 @@ class SortPanel(QWidget):
         skip = sum(1 for v in self.assignments.values() if v == "skip")
         unassigned = len(self.paths) - assigned - skip
         
-        self.lbl_status_counts.setText(f"Assigned: {assigned} | Belum: {unassigned} | Skip: {skip}")
+        self.lbl_status_counts.setText(f"Assigned: {assigned} | Unassigned: {unassigned} | Skip: {skip}")
 
     # --- Keyboard ---
 

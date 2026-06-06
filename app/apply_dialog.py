@@ -41,13 +41,13 @@ class ApplyDialog(QDialog):
         layout.setSpacing(15)
 
         # 1. Summary Table
-        lbl_summary = QLabel("Ringkasan Assignment:")
+        lbl_summary = QLabel("Assignment Summary:")
         lbl_summary.setStyleSheet("font-weight: bold; font-size: 14px;")
         layout.addWidget(lbl_summary)
 
         self.table = QTableWidget()
         self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Folder", "Jumlah File"])
+        self.table.setHorizontalHeaderLabels(["Folder", "File Count"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setStyleSheet(f"background-color: {COLORS['Surface']}; border: 1px solid {COLORS['Border']};")
@@ -58,7 +58,7 @@ class ApplyDialog(QDialog):
         # Conflict Resolution UI removed - will ask interactively if needed
 
         # 3. Progress Area (Hidden initially)
-        self.lbl_progress = QLabel("Memindahkan file...")
+        self.lbl_progress = QLabel("Moving files...")
         self.lbl_progress.hide()
         layout.addWidget(self.lbl_progress)
 
@@ -71,14 +71,14 @@ class ApplyDialog(QDialog):
         # 4. Buttons
         self.btn_layout = QHBoxLayout()
         
-        self.btn_cancel = QPushButton("Batal")
+        self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.clicked.connect(self.reject)
         
-        self.btn_apply = QPushButton("Apply Sekarang")
+        self.btn_apply = QPushButton("Apply Now")
         self.btn_apply.setObjectName("ctaButton")
         self.btn_apply.clicked.connect(self.start_apply)
         
-        self.btn_close = QPushButton("Tutup")
+        self.btn_close = QPushButton("Close")
         self.btn_close.clicked.connect(self.accept)
         self.btn_close.hide()
 
@@ -92,7 +92,7 @@ class ApplyDialog(QDialog):
     def populate_summary(self):
         counts = {sf["name"]: 0 for sf in self.subfolders}
         counts["[Skip]"] = 0
-        counts["[Belum]"] = 0
+        counts["[Unassigned]"] = 0
         
         total_files = len(self.assignments)
         
@@ -100,7 +100,7 @@ class ApplyDialog(QDialog):
             if sf == "skip":
                 counts["[Skip]"] += 1
             elif sf is None:
-                counts["[Belum]"] += 1
+                counts["[Unassigned]"] += 1
             elif sf in counts:
                 counts[sf] += 1
                 
@@ -145,9 +145,9 @@ class ApplyDialog(QDialog):
         dest_dir = Path(dest_path_str).parent.name
         
         msg = QMessageBox(self)
-        msg.setWindowTitle("Konflik File")
-        msg.setText(f"File '{src_name}' sudah ada di folder '{dest_dir}'.")
-        msg.setInformativeText("Apa yang ingin Anda lakukan untuk file ini?")
+        msg.setWindowTitle("File Conflict")
+        msg.setText(f"File '{src_name}' already exists in folder '{dest_dir}'.")
+        msg.setInformativeText("What would you like to do with this file?")
         
         btn_skip = msg.addButton("Skip", QMessageBox.ButtonRole.ActionRole)
         btn_skip_all = msg.addButton("Skip All", QMessageBox.ButtonRole.ActionRole)
@@ -176,16 +176,16 @@ class ApplyDialog(QDialog):
     def update_progress(self, current, total):
         pct = int(current / total * 100) if total > 0 else 100
         self.progress_bar.setValue(pct)
-        self.lbl_progress.setText(f"Memindahkan file... {current} / {total}")
+        self.lbl_progress.setText(f"Moving files... {current} / {total}")
 
     def on_apply_finished(self, summary):
         self.progress_bar.setValue(100)
         
-        msg = f"Selesai.\nBerhasil pindah: {summary['moved']}\n"
+        msg = f"Done.\nSuccessfully moved: {summary['moved']}\n"
         if summary['skipped_conflict'] > 0:
-            msg += f"Konflik dilewati: {summary['skipped_conflict']}\n"
+            msg += f"Conflicts skipped: {summary['skipped_conflict']}\n"
         if summary['errors'] > 0:
-            msg += f"Error: {summary['errors']}\n(Lihat log error jika ada file yang gagal)"
+            msg += f"Errors: {summary['errors']}\n(Check error log if any files failed)"
             
         self.lbl_progress.setText(msg)
         

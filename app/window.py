@@ -50,8 +50,8 @@ class MainWindow(QMainWindow):
         if SessionManager.detect_existing_session(source_folder):
             reply = QMessageBox.question(
                 self,
-                "Sesi Ditemukan",
-                f"Sesi sebelumnya untuk folder ini ditemukan.\nLanjutkan sesi?",
+                "Session Found",
+                f"A previous session for this folder was found.\nResume session?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.Yes
             )
